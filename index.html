@@ -676,6 +676,7 @@ Return ONLY the JSON object, nothing else.`;
     const res = await fetch(`${this.API_URL}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         tools: [{ google_search_retrieval: {} }],
@@ -687,9 +688,14 @@ Return ONLY the JSON object, nothing else.`;
     }
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    // Extract first JSON object from the response text
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error('No JSON found in Gemini response');
-    return JSON.parse(match[0]);
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      throw new Error('Failed to parse JSON from Gemini response');
+    }
   },
 
   async searchTitle(query) {

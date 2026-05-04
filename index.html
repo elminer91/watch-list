@@ -957,7 +957,6 @@ WatchList.UI = {
     WatchList.Storage.setSetting('tonightTypeFilter', filter);
     this.renderHome();
   },
-  // Stub renderers — filled in later tasks
   renderBrowse(filters = {}) {
     WatchList.State.activeFilters = filters;
     const el = document.getElementById('screen-browse');
@@ -975,8 +974,8 @@ WatchList.UI = {
       { label: 'Watching',      active: filters.status==='watching',   onclick: `WatchList.UI.renderBrowse({status:'watching'})` },
       { label: 'Watched',       active: filters.status==='watched',    onclick: `WatchList.UI.renderBrowse({status:'watched'})` },
       { label: 'Abandoned',     active: filters.status==='abandoned',  onclick: `WatchList.UI.renderBrowse({status:'abandoned'})` },
-      ...services.map(s => ({ label: this._esc(s), active: filters.service===s, onclick: `WatchList.UI.renderBrowse({service:${JSON.stringify(s)}})` })),
-      ...moods.map(m => ({ label: this._esc(m), active: filters.mood===m, onclick: `WatchList.UI.renderBrowse({mood:${JSON.stringify(m)}})` })),
+      ...services.map(s => ({ label: this._esc(s), active: filters.service===s, onclick: `WatchList.UI.renderBrowse({service:${this._esc(JSON.stringify(s))}})` })),
+      ...moods.map(m => ({ label: this._esc(m), active: filters.mood===m, onclick: `WatchList.UI.renderBrowse({mood:${this._esc(JSON.stringify(m))}})` })),
     ].map(p => `<div class="filter-pill ${p.active?'active':''}" onclick="${p.onclick}">${p.label}</div>`).join('');
 
     const gridHTML = items.length

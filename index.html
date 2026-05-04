@@ -38,6 +38,7 @@
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
       -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
     }
 
     /* APP SHELL */
@@ -389,6 +390,19 @@
     }
     .type-pill.active { background: var(--btn-gradient); border-color: transparent; color: #fff; }
     .shuffle-btn { font-size: 20px; cursor: pointer; opacity: 0.6; min-width: 32px; text-align: center; }
+
+    /* iOS tap highlight */
+    * { -webkit-tap-highlight-color: transparent; }
+
+    /* Momentum scrolling on all scrollable areas */
+    .screen, .sheet-scroll { -webkit-overflow-scrolling: touch; }
+
+    /* Prevent text selection on interactive elements */
+    .tab-item, .filter-pill, .type-pill, .btn-primary, .btn-secondary,
+    .entry-card, .mini-card, .tonight-card, .status-chip, .plus-btn,
+    .edit-badge, .star, .shuffle-btn {
+      -webkit-user-select: none; user-select: none;
+    }
   </style>
 </head>
 <body>

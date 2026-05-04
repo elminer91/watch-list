@@ -860,7 +860,135 @@ WatchList.UI = {
   // Stub renderers — filled in later tasks
   renderHome() {},
   renderBrowse() {},
-  renderAdd() {},
+  renderAdd() {
+    const el = document.getElementById('screen-add');
+    if (!el) return;
+    el.innerHTML = `
+      <div class="screen-header">
+        <div class="screen-title">Add</div>
+      </div>
+      <div id="add-content" style="padding:0 16px;flex:1;display:flex;flex-direction:column;gap:16px;"></div>
+    `;
+    this._showAddSearch();
+  },
+
+  _showAddSearch(prefill = '') {
+    const container = document.getElementById('add-content');
+    if (!container) return;
+    container.innerHTML = `
+      <input id="add-query" class="text-input" type="text"
+        placeholder="Movie or TV show title..."
+        value="${WatchList.UI._esc(prefill)}">
+      <p style="font-size:12px;color:var(--text-dim);text-align:center;">
+        Type any title — AI will find and fill in the details
+      </p>
+      <button class="btn-primary" onclick="WatchList.UI._startSearch()">
+        Search
+        <svg width="18" height="18" viewBox="0 0 28 28" fill="none">
+          <path d="M14 2C14 2 15.5 9.5 18.5 11.5C21.5 13.5 26 14 26 14C26 14 21.5 14.5 18.5 16.5C15.5 18.5 14 26 14 26C14 26 12.5 18.5 9.5 16.5C6.5 14.5 2 14 2 14C2 14 6.5 13.5 9.5 11.5C12.5 9.5 14 2 14 2Z" fill="white"/>
+        </svg>
+      </button>
+    `;
+    const input = document.getElementById('add-query');
+    if (input) {
+      setTimeout(() => input.focus(), 100);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') WatchList.UI._startSearch();
+      });
+    }
+  },
+
+  _showAddLoading(title) {
+    const container = document.getElementById('add-content');
+    if (!container) return;
+    container.innerHTML = `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+        <div class="spinner"></div>
+        <div style="font-size:15px;color:var(--text-muted)">Finding <strong style="color:var(--text)">${WatchList.UI._esc(title)}</strong>…</div>
+        <div style="font-size:12px;color:var(--text-dim)">Searching with Google</div>
+      </div>
+    `;
+  },
+
+  _showAddError(message, query) {
+    const container = document.getElementById('add-content');
+    if (!container) return;
+    container.innerHTML = `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;">
+        <div style="font-size:40px;">⚠️</div>
+        <div style="font-size:15px;font-weight:700;">Search failed</div>
+        <div style="font-size:13px;color:var(--text-muted);line-height:1.5;">${WatchList.UI._esc(message)}</div>
+        <button class="btn-primary" onclick="WatchList.UI._showAddSearch(${JSON.stringify(query)})">Try Again</button>
+      </div>
+    `;
+  },
+
+  _showAddConfirm(data, query) {
+    const container = document.getElementById('add-content');
+    if (!container) return;
+    const poster = data.posterUrl
+      ? `<img src="${WatchList.UI._esc(data.posterUrl)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" onerror="this.style.display='none'">`
+      : '';
+    const cast = (data.cast || []).slice(0, 3).map(c =>
+      `<span style="font-size:10px;padding:3px 8px;background:rgba(255,255,255,0.07);border-radius:20px;border:1px solid var(--border);color:var(--text-muted)">${WatchList.UI._esc(c)}</span>`
+    ).join('');
+    container.innerHTML = `
+      <div style="border-radius:var(--radius-card);overflow:hidden;border:1px solid var(--border-accent);">
+        <div style="position:relative;height:200px;background:var(--bg-card);display:flex;align-items:center;justify-content:center;font-size:60px;">
+          ${poster}
+          ${data.type === 'tv' ? '📺' : '🎬'}
+          <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(37,19,81,0.97) 25%,transparent);"></div>
+          <div style="position:absolute;bottom:12px;left:14px;right:14px;">
+            <div style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:0.5px;text-transform:uppercase;">
+              ${data.type === 'tv' ? 'TV Show' : 'Movie'} · ${WatchList.UI._esc(String(data.releaseYear || ''))}
+            </div>
+            <div style="font-size:20px;font-weight:800;margin-top:2px;">${WatchList.UI._esc(data.title || '')}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${WatchList.UI._esc(data.director || '')}</div>
+          </div>
+        </div>
+        <div style="padding:14px;display:flex;gap:6px;flex-wrap:wrap;">${cast}</div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-primary" style="flex:1" onclick="WatchList.UI._confirmAdd()">✓ That's it</button>
+        <button class="btn-secondary" style="flex:1" onclick="WatchList.UI._showAddSearch(${JSON.stringify(query)})">↺ Try again</button>
+      </div>
+    `;
+    WatchList.State._pendingAdd = data;
+  },
+
+  async _startSearch() {
+    const input = document.getElementById('add-query');
+    const query = input?.value.trim();
+    if (!query) return;
+
+    const apiKey = WatchList.Storage.getSetting('geminiApiKey');
+    if (!apiKey) {
+      WatchList.UI._showAddError('No API key set. Go to Settings and add your Gemini API key first.', query);
+      return;
+    }
+
+    WatchList.UI._showAddLoading(query);
+    try {
+      const data = await WatchList.Gemini.searchTitle(query);
+      WatchList.UI._showAddConfirm(data, query);
+    } catch (err) {
+      const msg = err.message === 'NO_API_KEY'
+        ? 'No API key set. Go to Settings and add your Gemini API key first.'
+        : (err.message || 'Something went wrong. Please try again.');
+      WatchList.UI._showAddError(msg, query);
+    }
+  },
+
+  _confirmAdd() {
+    const data = WatchList.State._pendingAdd;
+    if (!data) return;
+    const item = WatchList.Items.add(data);
+    WatchList.State._pendingAdd = null;
+    WatchList.UI._showAddSearch();
+    WatchList.UI.openDetail(item);
+    WatchList.UI.showToast(`"${WatchList.UI._esc(item.title)}" added!`);
+  },
+
   renderSearch() {},
   renderDetail() {},
 };

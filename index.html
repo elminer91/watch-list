@@ -619,6 +619,96 @@ WatchList.Items = {
   }
 };
 
+// ─── GEMINI ────────────────────────────────────────────────────────────────
+WatchList.Gemini = {
+  API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+
+  buildSearchPrompt(query) {
+    return `You are a movie and TV show database assistant. The user wants to add a title to their personal watchlist.
+
+Search the web and find this movie or TV show: "${query}"
+
+Return ONLY a single valid JSON object — no markdown, no explanation, just raw JSON.
+
+Schema:
+{
+  "title": "exact official title",
+  "type": "movie" or "tv",
+  "genre": ["Genre1", "Genre2"],
+  "posterUrl": "direct URL to a JPEG or PNG poster image",
+  "runtime": runtime in minutes for movies (integer or null),
+  "episodeCount": total episodes for TV shows (integer or null),
+  "avgEpisodeLength": average episode length in minutes for TV shows (integer or null),
+  "streamingServices": ["Service1", "Service2"] (US services currently streaming this),
+  "releaseYear": year as integer,
+  "releaseDate": "YYYY-MM-DD",
+  "cast": ["Actor 1", "Actor 2", "Actor 3"] (top 3),
+  "director": "Director Name" (null for TV shows),
+  "bingeStatus": "binge_ready" or "airing" or "between_seasons" or null (TV shows only; null for movies),
+  "finaleDate": "YYYY-MM-DD" or null (only set if bingeStatus is "airing")
+}
+
+Rules:
+- posterUrl must be a working direct image URL (not a webpage URL)
+- streamingServices: only active current US streaming availability
+- bingeStatus for TV shows: "binge_ready" means the full current season is out; "airing" means mid-season right now; "between_seasons" means no active season
+- Return null for any field you cannot determine with confidence
+- Return ONLY the JSON object, nothing else`;
+  },
+
+  buildBingePrompt(item) {
+    return `Check the current binge/airing status for the TV show "${item.title}" (${item.releaseYear}).
+
+Return ONLY a single valid JSON object:
+{
+  "bingeStatus": "binge_ready" or "airing" or "between_seasons",
+  "finaleDate": "YYYY-MM-DD" or null
+}
+
+- "binge_ready": the full current season has been released
+- "airing": actively airing right now (finaleDate is the expected finale date of this season)
+- "between_seasons": no season currently airing
+
+Return ONLY the JSON object, nothing else.`;
+  },
+
+  async call(prompt, apiKey) {
+    const res = await fetch(`${this.API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        tools: [{ google_search_retrieval: {} }],
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${res.status}`);
+    }
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('No JSON found in Gemini response');
+    return JSON.parse(match[0]);
+  },
+
+  async searchTitle(query) {
+    const apiKey = WatchList.Storage.getSetting('geminiApiKey');
+    if (!apiKey) throw new Error('NO_API_KEY');
+    return this.call(this.buildSearchPrompt(query), apiKey);
+  },
+
+  async refreshBingeStatus(item) {
+    const apiKey = WatchList.Storage.getSetting('geminiApiKey');
+    if (!apiKey) throw new Error('NO_API_KEY');
+    const result = await this.call(this.buildBingePrompt(item), apiKey);
+    return WatchList.Items.update(item.id, {
+      bingeStatus: result.bingeStatus || null,
+      finaleDate: result.finaleDate || null,
+    });
+  }
+};
+
 // ─── STATE ─────────────────────────────────────────────────────────────────
 WatchList.State = {
   activeScreen: 'home',

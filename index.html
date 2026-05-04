@@ -1101,7 +1101,7 @@ WatchList.UI = {
       </div>
       <div style="display:flex;gap:10px;">
         <button class="btn-primary" style="flex:1" onclick="WatchList.UI._confirmAdd()">✓ That's it</button>
-        <button class="btn-secondary" style="flex:1" onclick="WatchList.UI._showAddSearch(${JSON.stringify(query)})">↺ Try again</button>
+        <button class="btn-secondary" style="flex:1" onclick="WatchList.UI._showAddSearch(${WatchList.UI._esc(JSON.stringify(query))})">↺ Try again</button>
       </div>
     `;
     WatchList.State._pendingAdd = data;

@@ -1304,7 +1304,7 @@ WatchList.UI = {
         <div class="field-key">${WatchList.UI._esc(label)}</div>
         <div class="field-val-wrap">
           <div class="field-val" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${WatchList.UI._esc(String(displayVal))}</div>
-          <div class="edit-badge" onclick="WatchList.UI._inlineEdit('${itemId}','${field}',${JSON.stringify(String(editVal))})">✎</div>
+          <div class="edit-badge" onclick="WatchList.UI._inlineEdit('${itemId}','${field}',${WatchList.UI._esc(JSON.stringify(String(editVal)))})">✎</div>
         </div>
       </div>`;
   },

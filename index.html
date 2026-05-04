@@ -684,12 +684,83 @@ WatchList.UI = {
     setTimeout(() => t.remove(), 3000);
   },
 
+  renderSettings() {
+    const settings = WatchList.Storage.getSettings();
+    const el = document.getElementById('screen-settings');
+    el.innerHTML = `
+      <div class="screen-header">
+        <div class="screen-title">Settings</div>
+      </div>
+      <div style="padding:0 16px; display:flex; flex-direction:column; gap:20px;">
+
+        <div>
+          <div class="section-label" style="margin-bottom:10px">Gemini API Key</div>
+          <input id="api-key-input" class="text-input" type="password"
+            placeholder="Paste your API key here"
+            value="${settings.geminiApiKey || ''}">
+          <button class="btn-primary" style="margin-top:10px" onclick="WatchList.UI.saveApiKey()">
+            Save Key
+          </button>
+        </div>
+
+        <div style="height:1px;background:var(--border)"></div>
+
+        <div>
+          <div class="section-label" style="margin-bottom:4px">Backup</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+            ${WatchList.Storage.getLastExportRelative()}
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn-primary" style="flex:1" onclick="WatchList.Storage.exportItems(); WatchList.UI.renderSettings();">
+              ⬇ Export JSON
+            </button>
+            <button class="btn-secondary" style="flex:1" onclick="WatchList.UI.triggerImport()">
+              ⬆ Import JSON
+            </button>
+          </div>
+          <input type="file" id="import-file-input" accept=".json" style="display:none">
+        </div>
+
+        <div style="height:1px;background:var(--border)"></div>
+
+        <div style="font-size:11px;color:var(--text-dim);text-align:center;line-height:1.6">
+          Data stored locally on this device.<br>
+          Export regularly to avoid data loss.
+        </div>
+      </div>
+    `;
+
+    document.getElementById('import-file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const confirmed = confirm(`Import from "${file.name}"? This will replace your entire current list.`);
+      if (!confirmed) return;
+      try {
+        const count = await WatchList.Storage.importItems(file);
+        WatchList.UI.showToast(`Imported ${count} items.`);
+        WatchList.UI.renderSettings();
+      } catch (err) {
+        WatchList.UI.showToast(err.message, 'error');
+      }
+    });
+  },
+
+  saveApiKey() {
+    const key = document.getElementById('api-key-input')?.value.trim();
+    if (key === null || key === undefined) return;
+    WatchList.Storage.setSetting('geminiApiKey', key);
+    WatchList.UI.showToast('API key saved.');
+  },
+
+  triggerImport() {
+    document.getElementById('import-file-input')?.click();
+  },
+
   // Stub renderers — filled in later tasks
   renderHome() {},
   renderBrowse() {},
   renderAdd() {},
   renderSearch() {},
-  renderSettings() {},
   renderDetail() {},
 };
 

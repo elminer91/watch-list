@@ -632,8 +632,10 @@ WatchList.State = {
 // ─── UI NAVIGATION ─────────────────────────────────────────────────────────
 WatchList.UI = {
   navigate(screen) {
+    const screenEl = document.getElementById(`screen-${screen}`);
+    if (!screenEl) return;
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(`screen-${screen}`).classList.add('active');
+    screenEl.classList.add('active');
     document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
     document.querySelector(`[data-tab="${screen}"]`)?.classList.add('active');
     WatchList.State.activeScreen = screen;
@@ -693,10 +695,13 @@ WatchList.UI = {
 
 // ─── INIT ──────────────────────────────────────────────────────────────────
 WatchList.init = function() {
-  // Inject animation keyframes
-  const style = document.createElement('style');
-  style.textContent = `@keyframes fadeInUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }`;
-  document.head.appendChild(style);
+  // Inject animation keyframes (guarded for idempotency)
+  if (!document.getElementById('wl-keyframes')) {
+    const style = document.createElement('style');
+    style.id = 'wl-keyframes';
+    style.textContent = `@keyframes fadeInUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }`;
+    document.head.appendChild(style);
+  }
 
   // Wire tab bar
   document.querySelectorAll('.tab-item').forEach(tab => {

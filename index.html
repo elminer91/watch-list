@@ -1069,7 +1069,7 @@ WatchList.UI = {
         <div style="font-size:40px;">⚠️</div>
         <div style="font-size:15px;font-weight:700;">Search failed</div>
         <div style="font-size:13px;color:var(--text-muted);line-height:1.5;">${WatchList.UI._esc(message)}</div>
-        <button class="btn-primary" onclick="WatchList.UI._showAddSearch(${JSON.stringify(query)})">Try Again</button>
+        <button class="btn-primary" onclick="WatchList.UI._showAddSearch(${WatchList.UI._esc(JSON.stringify(query))})">Try Again</button>
       </div>
     `;
   },
@@ -1140,7 +1140,45 @@ WatchList.UI = {
     WatchList.UI.showToast(`"${item.title}" added!`);
   },
 
-  renderSearch() {},
+  renderSearch(filters = {}) {
+    WatchList.State.searchFilters = filters;
+    const el = document.getElementById('screen-search');
+    const services = WatchList.Items.getAllServices();
+    const moods = WatchList.Items.getAllMoods();
+    const pills = [
+      { label: 'All',          active: !Object.keys(filters).length, onclick: `WatchList.UI.renderSearch({})` },
+      { label: '🎬 Movies',   active: filters.type==='movie',        onclick: `WatchList.UI.renderSearch({type:'movie'})` },
+      { label: '📺 Shows',    active: filters.type==='tv',           onclick: `WatchList.UI.renderSearch({type:'tv'})` },
+      { label: '⚡ High',     active: filters.priority==='high',     onclick: `WatchList.UI.renderSearch({priority:'high'})` },
+      { label: 'Binge Ready', active: !!filters.binge,               onclick: `WatchList.UI.renderSearch({binge:true})` },
+      ...services.map(s => ({ label: this._esc(s), active: filters.service===s, onclick: `WatchList.UI.renderSearch({service:${this._esc(JSON.stringify(s))}})` })),
+      ...moods.map(m => ({ label: this._esc(m), active: filters.mood===m, onclick: `WatchList.UI.renderSearch({mood:${this._esc(JSON.stringify(m))}})` })),
+    ].map(p => `<div class="filter-pill ${p.active?'active':''}" onclick="${p.onclick}">${p.label}</div>`).join('');
+
+    el.innerHTML = `
+      <div class="screen-header"><div class="screen-title">Search</div></div>
+      <div style="padding:0 16px 10px;">
+        <input id="search-input" class="text-input" type="search"
+          placeholder="Search your list…" oninput="WatchList.UI._runSearch(this.value)">
+      </div>
+      <div class="filter-row">${pills}</div>
+      <div id="search-results"></div>
+    `;
+    setTimeout(() => document.getElementById('search-input')?.focus(), 100);
+    this._runSearch('');
+  },
+
+  _runSearch(query) {
+    const container = document.getElementById('search-results');
+    if (!container) return;
+    const filters = { ...(WatchList.State.searchFilters || {}), ...(query ? { query } : {}) };
+    const items = WatchList.Items.getFiltered(filters);
+    if (!items.length) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">${query ? `No results for "${this._esc(query)}"` : 'Nothing in your list yet'}</div></div>`;
+      return;
+    }
+    container.innerHTML = `<div class="card-grid">${items.map(i => this._browseCard(i)).join('')}</div><div style="height:16px;"></div>`;
+  },
 
   renderDetail(item) {
     const sheet = document.getElementById('detail-sheet');

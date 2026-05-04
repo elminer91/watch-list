@@ -449,7 +449,11 @@ WatchList.Storage = {
       localStorage.setItem(this.ITEMS_KEY, JSON.stringify(items));
     } catch (e) {
       if (e.name === 'QuotaExceededError') {
-        WatchList.UI.showToast('Storage full — please export and remove some entries.', 'error');
+        if (WatchList.UI?.showToast) {
+          WatchList.UI.showToast('Storage full — please export and remove some entries.', 'error');
+        } else {
+          console.error('WatchList Storage: QuotaExceededError — UI not yet available.');
+        }
       }
     }
   },
@@ -486,8 +490,10 @@ WatchList.Storage = {
     const date = new Date().toISOString().split('T')[0];
     a.href = url;
     a.download = `watchlist-export-${date}.json`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
     this.setSetting('lastExportDate', new Date().toISOString());
   },
 

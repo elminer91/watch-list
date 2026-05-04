@@ -958,7 +958,60 @@ WatchList.UI = {
     this.renderHome();
   },
   // Stub renderers — filled in later tasks
-  renderBrowse() {},
+  renderBrowse(filters = {}) {
+    WatchList.State.activeFilters = filters;
+    const el = document.getElementById('screen-browse');
+    const services = WatchList.Items.getAllServices();
+    const moods = WatchList.Items.getAllMoods();
+    const items = WatchList.Items.getFiltered(filters);
+
+    const pills = [
+      { label: 'All',            active: !Object.keys(filters).length, onclick: `WatchList.UI.renderBrowse({})` },
+      { label: '🎬 Movies',     active: filters.type==='movie',        onclick: `WatchList.UI.renderBrowse({type:'movie'})` },
+      { label: '📺 Shows',      active: filters.type==='tv',           onclick: `WatchList.UI.renderBrowse({type:'tv'})` },
+      { label: '⚡ High',       active: filters.priority==='high',     onclick: `WatchList.UI.renderBrowse({priority:'high'})` },
+      { label: 'Binge Ready',   active: !!filters.binge,               onclick: `WatchList.UI.renderBrowse({binge:true})` },
+      { label: 'Want to Watch', active: filters.status==='want',       onclick: `WatchList.UI.renderBrowse({status:'want'})` },
+      { label: 'Watching',      active: filters.status==='watching',   onclick: `WatchList.UI.renderBrowse({status:'watching'})` },
+      { label: 'Watched',       active: filters.status==='watched',    onclick: `WatchList.UI.renderBrowse({status:'watched'})` },
+      { label: 'Abandoned',     active: filters.status==='abandoned',  onclick: `WatchList.UI.renderBrowse({status:'abandoned'})` },
+      ...services.map(s => ({ label: this._esc(s), active: filters.service===s, onclick: `WatchList.UI.renderBrowse({service:${JSON.stringify(s)}})` })),
+      ...moods.map(m => ({ label: this._esc(m), active: filters.mood===m, onclick: `WatchList.UI.renderBrowse({mood:${JSON.stringify(m)}})` })),
+    ].map(p => `<div class="filter-pill ${p.active?'active':''}" onclick="${p.onclick}">${p.label}</div>`).join('');
+
+    const gridHTML = items.length
+      ? `<div class="card-grid">${items.map(i => this._browseCard(i)).join('')}</div>`
+      : `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No results</div><div class="empty-sub">Try a different filter</div><div class="btn-secondary" style="margin-top:8px;" onclick="WatchList.UI.renderBrowse({})">Clear filters</div></div>`;
+
+    el.innerHTML = `
+      <div class="screen-header"><div class="screen-title">Browse</div></div>
+      <div class="filter-row">${pills}</div>
+      ${gridHTML}
+      <div style="height:16px;"></div>
+    `;
+  },
+
+  _browseCard(item) {
+    const dotClass = { want:'dot-want', watching:'dot-watching', watched:'dot-watched', abandoned:'dot-abandoned' }[item.status] || 'dot-want';
+    const poster = item.posterUrl
+      ? `<img class="card-poster" src="${this._esc(item.posterUrl)}" onerror="this.style.display='none'">`
+      : `<div class="card-poster-fallback">${item.type==='tv'?'📺':'🎬'}</div>`;
+    return `
+      <div class="entry-card" onclick="WatchList.UI.openDetail(WatchList.Items.getById('${item.id}'))">
+        <div style="position:relative;">
+          ${poster}
+          <div class="card-poster-fade"></div>
+          <div class="card-status-dot ${dotClass}"></div>
+          ${item.bingeStatus==='binge_ready'?`<div class="card-binge-badge">BINGE READY</div>`:''}
+        </div>
+        <div class="card-body">
+          <div class="card-title">${this._esc(item.title)}</div>
+          <div class="card-service">${this._esc(item.streamingServices?.[0]||'')}</div>
+          <div class="card-meta">${item.type==='tv'?'Show':'Movie'} · ${this._esc(String(item.releaseYear||''))}</div>
+        </div>
+      </div>`;
+  },
+
   renderAdd() {
     const el = document.getElementById('screen-add');
     if (!el) return;

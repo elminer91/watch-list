@@ -432,6 +432,92 @@
 </div>
 <script>
 const WatchList = {};
+
+// ─── STORAGE ───────────────────────────────────────────────────────────────
+WatchList.Storage = {
+  ITEMS_KEY: 'watchlist_items',
+  SETTINGS_KEY: 'watchlist_settings',
+
+  getItems() {
+    try {
+      return JSON.parse(localStorage.getItem(this.ITEMS_KEY) || '[]');
+    } catch { return []; }
+  },
+
+  setItems(items) {
+    try {
+      localStorage.setItem(this.ITEMS_KEY, JSON.stringify(items));
+    } catch (e) {
+      if (e.name === 'QuotaExceededError') {
+        WatchList.UI.showToast('Storage full — please export and remove some entries.', 'error');
+      }
+    }
+  },
+
+  getSettings() {
+    try {
+      return JSON.parse(localStorage.getItem(this.SETTINGS_KEY) || '{}');
+    } catch { return {}; }
+  },
+
+  setSettings(settings) {
+    localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(settings));
+  },
+
+  getSetting(key, fallback = null) {
+    return this.getSettings()[key] ?? fallback;
+  },
+
+  setSetting(key, value) {
+    const s = this.getSettings();
+    s[key] = value;
+    this.setSettings(s);
+  },
+
+  generateId() {
+    return crypto.randomUUID();
+  },
+
+  exportItems() {
+    const items = this.getItems();
+    const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `watchlist-export-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.setSetting('lastExportDate', new Date().toISOString());
+  },
+
+  importItems(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const items = JSON.parse(e.target.result);
+          if (!Array.isArray(items)) throw new Error('Invalid format');
+          this.setItems(items);
+          resolve(items.length);
+        } catch {
+          reject(new Error('Could not read file. Make sure it is a valid WatchList export.'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Could not read file.'));
+      reader.readAsText(file);
+    });
+  },
+
+  getLastExportRelative() {
+    const date = this.getSetting('lastExportDate');
+    if (!date) return 'Never backed up';
+    const days = Math.floor((Date.now() - new Date(date)) / 86400000);
+    if (days === 0) return 'Backed up today';
+    if (days === 1) return 'Last backed up yesterday';
+    return `Last backed up ${days} days ago`;
+  }
+};
 </script>
 </body>
 </html>

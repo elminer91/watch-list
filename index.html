@@ -990,7 +990,216 @@ WatchList.UI = {
   },
 
   renderSearch() {},
-  renderDetail() {},
+
+  renderDetail(item) {
+    const sheet = document.getElementById('detail-sheet');
+    if (!sheet || !item) return;
+    const isTV = item.type === 'tv';
+    const statusOptions = [
+      { value: 'want',      label: 'Want to Watch' },
+      { value: 'watching',  label: 'Watching' },
+      { value: 'watched',   label: 'Watched' },
+      { value: 'abandoned', label: 'Abandoned' },
+    ];
+
+    const posterHTML = item.posterUrl
+      ? `<img src="${WatchList.UI._esc(item.posterUrl)}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" onerror="this.style.display='none'"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:60px;pointer-events:none;">${isTV ? '📺' : '🎬'}</div>`
+      : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:60px;">${isTV ? '📺' : '🎬'}</div>`;
+
+    const statusChips = statusOptions.map(o =>
+      `<div class="status-chip ${item.status === o.value ? 'active' : ''}"
+        onclick="WatchList.UI._updateDetailField('${item.id}','status','${o.value}')">${o.label}</div>`
+    ).join('');
+
+    const moodPills = (item.moodTags || []).map(t =>
+      `<span class="mood-pill">${WatchList.UI._esc(t)}</span>`
+    ).join('');
+
+    const starsHTML = [1,2,3,4,5].map(n =>
+      `<span class="star ${(item.rating || 0) >= n ? 'filled' : 'empty'}"
+        onclick="WatchList.UI._updateDetailField('${item.id}','rating',${n})">★</span>`
+    ).join('');
+
+    const bingeColor = { binge_ready: '#2ecc71', airing: '#e67e22', between_seasons: '#7f8c8d' };
+    const bingeLabel = { binge_ready: 'Binge Ready', airing: 'Airing', between_seasons: 'Between Seasons' };
+
+    const genreDisplay = Array.isArray(item.genre) ? item.genre.join(', ') : (item.genre || '—');
+    const serviceDisplay = Array.isArray(item.streamingServices) ? item.streamingServices.join(', ') : (item.streamingServices || '—');
+    const runtimeDisplay = isTV
+      ? (item.episodeCount ? `${item.episodeCount} eps · ~${item.avgEpisodeLength || '?'}min` : '—')
+      : (item.runtime ? `${item.runtime} min` : '—');
+    const releaseDisplay = item.releaseDate || String(item.releaseYear || '—');
+
+    sheet.innerHTML = `
+      <div class="sheet-handle"></div>
+      <div style="position:relative;height:170px;flex-shrink:0;overflow:hidden;background:var(--bg-card);">
+        ${posterHTML}
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,var(--sheet-bg) 30%,transparent);"></div>
+        <div style="position:absolute;bottom:12px;left:16px;right:16px;">
+          <div class="sheet-title">${WatchList.UI._esc(item.title)}</div>
+          <div class="sheet-sub">${isTV ? 'TV Show' : 'Movie'} · ${WatchList.UI._esc(String(item.releaseYear || ''))}${item.runtime ? ' · ' + item.runtime + ' min' : ''}</div>
+        </div>
+      </div>
+
+      <div class="sheet-scroll">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${statusChips}</div>
+
+        ${item.status === 'watched' ? `
+        <div class="field-row">
+          <div class="field-key">Rating</div>
+          <div class="field-val-wrap"><div class="stars">${starsHTML}</div></div>
+        </div>` : ''}
+
+        ${WatchList.UI._editableField(item.id, 'Genre', 'genre', genreDisplay)}
+        ${WatchList.UI._editableField(item.id, 'Streaming', 'streamingServices', serviceDisplay)}
+        ${WatchList.UI._editableField(item.id, isTV ? 'Episodes' : 'Runtime', isTV ? 'episodeCount' : 'runtime', runtimeDisplay)}
+        ${WatchList.UI._editableField(item.id, 'Release', 'releaseDate', releaseDisplay)}
+
+        <div class="field-row">
+          <div class="field-key">Priority</div>
+          <div class="field-val-wrap">
+            <span class="mood-pill" style="cursor:pointer;${item.priority === 'high' ? 'background:rgba(229,122,68,0.25);border-color:rgba(229,122,68,0.5)' : ''}"
+              onclick="WatchList.UI._togglePriority('${item.id}')">
+              ${item.priority === 'high' ? '⚡ High' : 'Normal'}
+            </span>
+          </div>
+        </div>
+
+        <div class="field-row" style="align-items:flex-start;padding-top:10px;">
+          <div class="field-key" style="padding-top:3px;">Mood / Vibe</div>
+          <div class="field-val-wrap" style="flex-wrap:wrap;justify-content:flex-end;gap:4px;">
+            ${moodPills}
+            <span class="plus-btn" onclick="WatchList.UI._openMoodPicker('${item.id}')">+</span>
+          </div>
+        </div>
+
+        ${isTV ? `
+        <div class="field-row">
+          <div class="field-key">Season</div>
+          <div class="field-val-wrap" style="gap:10px;">
+            <span style="font-size:18px;cursor:pointer;padding:4px 8px;min-width:32px;text-align:center;" onclick="WatchList.UI._changeSeason('${item.id}',-1)">−</span>
+            <span style="font-size:13px;font-weight:700;">S${item.currentSeason || 1}</span>
+            <span style="font-size:18px;cursor:pointer;padding:4px 8px;min-width:32px;text-align:center;" onclick="WatchList.UI._changeSeason('${item.id}',1)">+</span>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-key">Binge Status</div>
+          <div class="field-val-wrap">
+            ${item.bingeStatus ? `
+              <span style="width:7px;height:7px;border-radius:50%;background:${bingeColor[item.bingeStatus]};flex-shrink:0;display:inline-block;"></span>
+              <span style="font-size:10px;font-weight:700;color:${bingeColor[item.bingeStatus]}">${bingeLabel[item.bingeStatus]}</span>
+              ${item.bingeStatus === 'airing' && item.finaleDate ? `<span style="font-size:9px;color:var(--text-dim)">· finale ${WatchList.UI._esc(item.finaleDate)}</span>` : ''}
+            ` : '<span style="font-size:11px;color:var(--text-dim)">Unknown</span>'}
+            <span style="font-size:14px;cursor:pointer;opacity:0.5;margin-left:4px;min-width:24px;text-align:center;" onclick="WatchList.UI._refreshBinge('${item.id}')">↺</span>
+          </div>
+        </div>
+        ` : ''}
+
+        <div class="field-row">
+          <div class="field-key">Added</div>
+          <div class="field-val-wrap"><div class="field-val">${WatchList.UI._esc(item.dateAdded || '')}</div></div>
+        </div>
+
+        <div class="btn-danger" style="margin-top:16px;"
+          onclick="WatchList.UI._deleteItem('${item.id}')">
+          Remove from list
+        </div>
+      </div>
+    `;
+  },
+
+  _editableField(itemId, label, field, displayVal) {
+    return `
+      <div class="field-row">
+        <div class="field-key">${WatchList.UI._esc(label)}</div>
+        <div class="field-val-wrap">
+          <div class="field-val" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${WatchList.UI._esc(String(displayVal))}</div>
+          <div class="edit-badge" onclick="WatchList.UI._inlineEdit('${itemId}','${field}',${JSON.stringify(String(displayVal))})">✎</div>
+        </div>
+      </div>`;
+  },
+
+  _updateDetailField(id, field, value) {
+    const updated = WatchList.Items.update(id, { [field]: value });
+    if (!updated) return;
+    WatchList.State.detailItem = updated;
+    WatchList.UI.renderDetail(updated);
+  },
+
+  _inlineEdit(id, field, currentVal) {
+    const newVal = prompt(`Edit ${field}:`, currentVal);
+    if (newVal === null) return;
+    const arrayFields = ['genre', 'streamingServices', 'cast'];
+    const value = arrayFields.includes(field)
+      ? newVal.split(',').map(s => s.trim()).filter(Boolean)
+      : (newVal !== '' && !isNaN(newVal) ? Number(newVal) : newVal);
+    WatchList.UI._updateDetailField(id, field, value);
+  },
+
+  _togglePriority(id) {
+    const item = WatchList.Items.getById(id);
+    if (!item) return;
+    WatchList.UI._updateDetailField(id, 'priority', item.priority === 'high' ? 'normal' : 'high');
+  },
+
+  _openMoodPicker(id) {
+    const item = WatchList.Items.getById(id);
+    if (!item) return;
+    const current = item.moodTags || [];
+    const options = WatchList.Items.MOOD_OPTIONS.map(m =>
+      `<label style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;min-height:44px;">
+        <input type="checkbox" ${current.includes(m) ? 'checked' : ''} value="${m}" style="width:18px;height:18px;accent-color:var(--accent);">
+        <span style="font-size:14px;">${m}</span>
+      </label>`
+    ).join('');
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;justify-content:flex-end;';
+    overlay.innerHTML = `
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);" onclick="this.parentElement.remove()"></div>
+      <div style="position:relative;background:var(--sheet-bg);border-radius:24px 24px 0 0;padding:20px 20px calc(var(--safe-bottom) + 20px);z-index:1;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:12px;">Mood / Vibe</div>
+        ${options}
+        <button class="btn-primary" style="margin-top:16px;" id="mood-done-btn">Done</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#mood-done-btn').addEventListener('click', () => {
+      const tags = Array.from(overlay.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value);
+      WatchList.UI._updateDetailField(id, 'moodTags', tags);
+      overlay.remove();
+    });
+  },
+
+  _changeSeason(id, delta) {
+    const item = WatchList.Items.getById(id);
+    if (!item) return;
+    const next = Math.max(1, (item.currentSeason || 1) + delta);
+    WatchList.UI._updateDetailField(id, 'currentSeason', next);
+  },
+
+  async _refreshBinge(id) {
+    const item = WatchList.Items.getById(id);
+    if (!item) return;
+    WatchList.UI.showToast('Checking binge status…');
+    try {
+      const updated = await WatchList.Gemini.refreshBingeStatus(item);
+      if (!updated) return;
+      WatchList.State.detailItem = updated;
+      WatchList.UI.renderDetail(updated);
+      WatchList.UI.showToast('Binge status updated.');
+    } catch (err) {
+      WatchList.UI.showToast('Could not refresh: ' + err.message, 'error');
+    }
+  },
+
+  _deleteItem(id) {
+    const item = WatchList.Items.getById(id);
+    if (!item) return;
+    if (!confirm(`Remove "${item.title}" from your list?`)) return;
+    WatchList.Items.delete(id);
+    WatchList.UI.closeDetail();
+    WatchList.UI.showToast('Removed.');
+  },
 };
 
 // ─── INIT ──────────────────────────────────────────────────────────────────

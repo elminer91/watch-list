@@ -631,6 +631,10 @@ WatchList.State = {
 
 // ─── UI NAVIGATION ─────────────────────────────────────────────────────────
 WatchList.UI = {
+  _esc(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  },
+
   navigate(screen) {
     const screenEl = document.getElementById(`screen-${screen}`);
     if (!screenEl) return;
@@ -687,6 +691,7 @@ WatchList.UI = {
   renderSettings() {
     const settings = WatchList.Storage.getSettings();
     const el = document.getElementById('screen-settings');
+    if (!el) return;
     el.innerHTML = `
       <div class="screen-header">
         <div class="screen-title">Settings</div>
@@ -697,7 +702,7 @@ WatchList.UI = {
           <div class="section-label" style="margin-bottom:10px">Gemini API Key</div>
           <input id="api-key-input" class="text-input" type="password"
             placeholder="Paste your API key here"
-            value="${settings.geminiApiKey || ''}">
+            value="${WatchList.UI._esc(settings.geminiApiKey || '')}">
           <button class="btn-primary" style="margin-top:10px" onclick="WatchList.UI.saveApiKey()">
             Save Key
           </button>
@@ -730,7 +735,7 @@ WatchList.UI = {
       </div>
     `;
 
-    document.getElementById('import-file-input').addEventListener('change', async (e) => {
+    document.getElementById('import-file-input')?.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
       const confirmed = confirm(`Import from "${file.name}"? This will replace your entire current list.`);
@@ -747,7 +752,7 @@ WatchList.UI = {
 
   saveApiKey() {
     const key = document.getElementById('api-key-input')?.value.trim();
-    if (key === null || key === undefined) return;
+    if (key == null) return;
     WatchList.Storage.setSetting('geminiApiKey', key);
     WatchList.UI.showToast('API key saved.');
   },

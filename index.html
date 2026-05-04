@@ -858,7 +858,106 @@ WatchList.UI = {
   },
 
   // Stub renderers — filled in later tasks
-  renderHome() {},
+  renderHome() {
+    const el = document.getElementById('screen-home');
+    const typeFilter = WatchList.Storage.getSetting('tonightTypeFilter', 'both');
+    const picks = WatchList.Items.getWatchTonightPicks(typeFilter);
+    const allItems = WatchList.Storage.getItems();
+
+    const tonightCards = picks.length === 0
+      ? `<div style="padding:0 16px 20px;color:var(--text-muted);font-size:13px;">Add some titles to see picks here.</div>`
+      : picks.map(item => this._tonightCard(item)).join('');
+
+    const highPriority = allItems.filter(i => i.priority === 'high' && i.status === 'want');
+    const services = WatchList.Items.getAllServices();
+    const moods = WatchList.Items.getAllMoods();
+
+    const serviceRows = services.map(s => {
+      const items = allItems.filter(i => i.streamingServices.includes(s) && i.status === 'want');
+      if (!items.length) return '';
+      return this._categoryRow(`📺 ${s}`, items);
+    }).join('');
+
+    const moodRows = moods.map(m => {
+      const items = allItems.filter(i => i.moodTags.includes(m) && i.status === 'want');
+      if (!items.length) return '';
+      const emoji = { funny:'😄', intense:'😤', light:'☀️', 'feel-good':'🤗', dark:'🌑', suspenseful:'😰' }[m] || '🎭';
+      return this._categoryRow(`${emoji} ${m}`, items);
+    }).join('');
+
+    el.innerHTML = `
+      <div style="padding:calc(var(--safe-top)+8px) 16px 12px;">
+        <div class="screen-title">WatchList</div>
+      </div>
+
+      <!-- Watch Tonight -->
+      <div class="tonight-controls">
+        <div class="tonight-label">Tonight</div>
+        <div class="type-pills">
+          <div class="type-pill ${typeFilter==='movie'?'active':''}" onclick="WatchList.UI._setTonightFilter('movie')">🎬 Movies</div>
+          <div class="type-pill ${typeFilter==='both'?'active':''}" onclick="WatchList.UI._setTonightFilter('both')">Both</div>
+          <div class="type-pill ${typeFilter==='tv'?'active':''}" onclick="WatchList.UI._setTonightFilter('tv')">📺 Shows</div>
+        </div>
+        <div class="shuffle-btn" onclick="WatchList.UI.renderHome()">🔀</div>
+      </div>
+      <div class="tonight-grid">${tonightCards}</div>
+
+      <!-- Category Rows -->
+      ${highPriority.length ? this._categoryRow('⚡ High Priority', highPriority) : ''}
+      ${serviceRows}
+      ${moodRows}
+
+      <div style="height:16px;"></div>
+    `;
+  },
+
+  _tonightCard(item) {
+    const poster = item.posterUrl
+      ? `<img src="${item.posterUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+      : '';
+    const isTV = item.type === 'tv';
+    const meta = [
+      item.streamingServices?.[0],
+      isTV && item.currentSeason ? `S${item.currentSeason}` : null,
+      item.genre?.[0]
+    ].filter(Boolean).join(' · ');
+    return `
+      <div class="tonight-card" onclick="WatchList.UI.openDetail(WatchList.Items.getById('${item.id}'))">
+        <div class="tonight-card-poster">${poster}</div>
+        <div class="tonight-card-fade"></div>
+        ${item.priority === 'high' ? `<div style="position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--accent);"></div>` : ''}
+        ${item.bingeStatus === 'binge_ready' ? `<div class="card-binge-badge">BINGE READY</div>` : ''}
+        <div class="tonight-card-content">
+          <div class="tonight-type-badge">${isTV ? 'TV Show' : 'Movie'}</div>
+          <div class="tonight-title">${item.title}</div>
+          ${meta ? `<div class="tonight-meta">${meta}</div>` : ''}
+        </div>
+      </div>`;
+  },
+
+  _categoryRow(label, items) {
+    const cards = items.slice(0, 10).map(item => `
+      <div class="mini-card" onclick="WatchList.UI.openDetail(WatchList.Items.getById('${item.id}'))">
+        <div class="mini-poster">
+          ${item.posterUrl ? `<img src="${item.posterUrl}" onerror="this.style.display='none'">` : ''}
+          ${item.type === 'tv' ? '📺' : '🎬'}
+        </div>
+        <div class="mini-body">
+          <div class="mini-title">${item.title}</div>
+          <div class="mini-sub">${item.streamingServices?.[0] || ''}</div>
+        </div>
+      </div>`).join('');
+    return `
+      <div style="margin-bottom:20px;">
+        <div style="padding:0 16px 10px;"><span class="section-label">${label}</span></div>
+        <div class="h-scroll">${cards}</div>
+      </div>`;
+  },
+
+  _setTonightFilter(filter) {
+    WatchList.Storage.setSetting('tonightTypeFilter', filter);
+    this.renderHome();
+  },
   renderBrowse() {},
   renderAdd() {
     const el = document.getElementById('screen-add');

@@ -1037,7 +1037,7 @@ WatchList.UI = {
         <div style="position:absolute;inset:0;background:linear-gradient(to top,var(--sheet-bg) 30%,transparent);"></div>
         <div style="position:absolute;bottom:12px;left:16px;right:16px;">
           <div class="sheet-title">${WatchList.UI._esc(item.title)}</div>
-          <div class="sheet-sub">${isTV ? 'TV Show' : 'Movie'} · ${WatchList.UI._esc(String(item.releaseYear || ''))}${item.runtime ? ' · ' + item.runtime + ' min' : ''}</div>
+          <div class="sheet-sub">${isTV ? 'TV Show' : 'Movie'} · ${WatchList.UI._esc(String(item.releaseYear || ''))}${item.runtime ? ' · ' + WatchList.UI._esc(String(item.runtime)) + ' min' : ''}</div>
         </div>
       </div>
 
@@ -1052,7 +1052,7 @@ WatchList.UI = {
 
         ${WatchList.UI._editableField(item.id, 'Genre', 'genre', genreDisplay)}
         ${WatchList.UI._editableField(item.id, 'Streaming', 'streamingServices', serviceDisplay)}
-        ${WatchList.UI._editableField(item.id, isTV ? 'Episodes' : 'Runtime', isTV ? 'episodeCount' : 'runtime', runtimeDisplay)}
+        ${WatchList.UI._editableField(item.id, isTV ? 'Episodes' : 'Runtime', isTV ? 'episodeCount' : 'runtime', runtimeDisplay, isTV ? item.episodeCount : item.runtime)}
         ${WatchList.UI._editableField(item.id, 'Release', 'releaseDate', releaseDisplay)}
 
         <div class="field-row">
@@ -1108,13 +1108,14 @@ WatchList.UI = {
     `;
   },
 
-  _editableField(itemId, label, field, displayVal) {
+  _editableField(itemId, label, field, displayVal, rawVal) {
+    const editVal = rawVal !== undefined && rawVal !== null ? rawVal : displayVal;
     return `
       <div class="field-row">
         <div class="field-key">${WatchList.UI._esc(label)}</div>
         <div class="field-val-wrap">
           <div class="field-val" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${WatchList.UI._esc(String(displayVal))}</div>
-          <div class="edit-badge" onclick="WatchList.UI._inlineEdit('${itemId}','${field}',${JSON.stringify(String(displayVal))})">✎</div>
+          <div class="edit-badge" onclick="WatchList.UI._inlineEdit('${itemId}','${field}',${JSON.stringify(String(editVal))})">✎</div>
         </div>
       </div>`;
   },
@@ -1145,6 +1146,7 @@ WatchList.UI = {
   _openMoodPicker(id) {
     const item = WatchList.Items.getById(id);
     if (!item) return;
+    if (document.querySelector('.mood-picker-overlay')) return;
     const current = item.moodTags || [];
     const options = WatchList.Items.MOOD_OPTIONS.map(m =>
       `<label style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer;min-height:44px;">
@@ -1153,6 +1155,7 @@ WatchList.UI = {
       </label>`
     ).join('');
     const overlay = document.createElement('div');
+    overlay.className = 'mood-picker-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;justify-content:flex-end;';
     overlay.innerHTML = `
       <div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);" onclick="this.parentElement.remove()"></div>

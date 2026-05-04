@@ -524,6 +524,108 @@ WatchList.Storage = {
     return `Last backed up ${days} days ago`;
   }
 };
+
+// ─── ITEMS ─────────────────────────────────────────────────────────────────
+WatchList.Items = {
+  MOOD_OPTIONS: ['funny', 'intense', 'light', 'feel-good', 'dark', 'suspenseful'],
+
+  add(data) {
+    const items = WatchList.Storage.getItems();
+    const item = {
+      id: WatchList.Storage.generateId(),
+      title: data.title || '',
+      type: data.type || 'movie',           // 'movie' | 'tv'
+      genre: data.genre || [],
+      moodTags: data.moodTags || [],
+      posterUrl: data.posterUrl || null,
+      runtime: data.runtime || null,
+      episodeCount: data.episodeCount || null,
+      avgEpisodeLength: data.avgEpisodeLength || null,
+      streamingServices: data.streamingServices || [],
+      releaseYear: data.releaseYear || null,
+      releaseDate: data.releaseDate || null,
+      cast: data.cast || [],
+      director: data.director || null,
+      bingeStatus: data.bingeStatus || null,  // 'binge_ready'|'airing'|'between_seasons'|null
+      finaleDate: data.finaleDate || null,
+      dateAdded: new Date().toISOString().split('T')[0],
+      status: 'want',       // always default — user sets this
+      rating: null,         // user sets when watched
+      priority: 'normal',   // user sets
+      currentSeason: data.currentSeason || null,
+    };
+    items.unshift(item);    // newest first
+    WatchList.Storage.setItems(items);
+    return item;
+  },
+
+  update(id, changes) {
+    const items = WatchList.Storage.getItems();
+    const idx = items.findIndex(i => i.id === id);
+    if (idx === -1) return null;
+    items[idx] = { ...items[idx], ...changes };
+    WatchList.Storage.setItems(items);
+    return items[idx];
+  },
+
+  delete(id) {
+    const items = WatchList.Storage.getItems().filter(i => i.id !== id);
+    WatchList.Storage.setItems(items);
+  },
+
+  getById(id) {
+    return WatchList.Storage.getItems().find(i => i.id === id) || null;
+  },
+
+  getFiltered(filters = {}) {
+    let items = WatchList.Storage.getItems();
+    if (filters.type)     items = items.filter(i => i.type === filters.type);
+    if (filters.status)   items = items.filter(i => i.status === filters.status);
+    if (filters.priority) items = items.filter(i => i.priority === filters.priority);
+    if (filters.service)  items = items.filter(i => i.streamingServices.includes(filters.service));
+    if (filters.mood)     items = items.filter(i => i.moodTags.includes(filters.mood));
+    if (filters.binge)    items = items.filter(i => i.bingeStatus === 'binge_ready');
+    if (filters.query) {
+      const q = filters.query.toLowerCase();
+      items = items.filter(i => i.title.toLowerCase().includes(q));
+    }
+    return items;
+  },
+
+  getAllServices() {
+    const all = WatchList.Storage.getItems().flatMap(i => i.streamingServices);
+    return [...new Set(all)].sort();
+  },
+
+  getAllMoods() {
+    const all = WatchList.Storage.getItems().flatMap(i => i.moodTags);
+    return [...new Set(all)];
+  },
+
+  getWatchTonightPicks(typeFilter) {
+    // typeFilter: 'both' | 'movie' | 'tv'
+    const pool = WatchList.Storage.getItems().filter(i => i.status === 'want');
+    const score = (item) => {
+      let s = Math.random();
+      if (item.priority === 'high') s += 2;
+      if (item.bingeStatus === 'binge_ready') s += 1;
+      return s;
+    };
+
+    if (typeFilter === 'movie') {
+      const movies = pool.filter(i => i.type === 'movie').sort((a, b) => score(b) - score(a));
+      return movies.slice(0, 2);
+    }
+    if (typeFilter === 'tv') {
+      const shows = pool.filter(i => i.type === 'tv').sort((a, b) => score(b) - score(a));
+      return shows.slice(0, 2);
+    }
+    // 'both'
+    const movies = pool.filter(i => i.type === 'movie').sort((a, b) => score(b) - score(a));
+    const shows  = pool.filter(i => i.type === 'tv').sort((a, b) => score(b) - score(a));
+    return [movies[0], shows[0]].filter(Boolean);
+  }
+};
 </script>
 </body>
 </html>

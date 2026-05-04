@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="WatchList">
+  <title>WatchList</title>
+  <style>
+    /* DESIGN TOKENS */
+    :root {
+      --bg: #251351;
+      --bg-card: linear-gradient(160deg, #3a1f7a, #1e0e4a);
+      --accent: #E57A44;
+      --accent-dark: #c95e2a;
+      --btn-gradient: linear-gradient(135deg, #E57A44, #c95e2a);
+      --text: #ffffff;
+      --text-muted: rgba(255,255,255,0.45);
+      --text-dim: rgba(255,255,255,0.3);
+      --border: rgba(255,255,255,0.08);
+      --border-accent: rgba(229,122,68,0.3);
+      --tab-bg: rgba(30,14,74,0.97);
+      --sheet-bg: #2a1560;
+      --radius-card: 16px;
+      --radius-btn: 14px;
+      --radius-pill: 20px;
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+      --tab-height: 60px;
+    }
+
+    /* RESET */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* APP SHELL */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding-top: var(--safe-top);
+    }
+
+    /* SCREENS */
+    .screen {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    .screen.active { display: flex; flex-direction: column; }
+
+    /* TAB BAR */
+    #tab-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      height: calc(var(--tab-height) + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: var(--tab-bg);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .tab-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 3px; flex: 1; cursor: pointer;
+      min-height: 44px; justify-content: center;
+    }
+    .tab-icon { font-size: 22px; opacity: 0.35; transition: opacity 0.15s; }
+    .tab-label { font-size: 10px; color: var(--text-dim); font-weight: 500; }
+    .tab-item.active .tab-icon { opacity: 1; }
+    .tab-item.active .tab-label { color: var(--accent); font-weight: 600; }
+    .tab-add-icon {
+      width: 46px; height: 46px;
+      background: var(--btn-gradient);
+      border-radius: 15px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; margin-top: -10px;
+      box-shadow: 0 4px 16px rgba(229,122,68,0.45);
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- SCREENS -->
+  <div id="screen-home"     class="screen active" data-screen="home"></div>
+  <div id="screen-browse"   class="screen"        data-screen="browse"></div>
+  <div id="screen-add"      class="screen"        data-screen="add"></div>
+  <div id="screen-search"   class="screen"        data-screen="search"></div>
+  <div id="screen-settings" class="screen"        data-screen="settings"></div>
+
+  <!-- DETAIL SHEET (overlays any screen) -->
+  <div id="detail-overlay" style="display:none; position:fixed; inset:0; z-index:100;">
+    <div id="detail-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);"></div>
+    <div id="detail-sheet" style="position:absolute;bottom:0;left:0;right:0;top:80px;background:var(--sheet-bg);border-radius:24px 24px 0 0;overflow:hidden;display:flex;flex-direction:column;"></div>
+  </div>
+
+  <!-- TAB BAR -->
+  <nav id="tab-bar">
+    <div class="tab-item active" data-tab="home">
+      <div class="tab-icon">🏠</div>
+      <div class="tab-label">Home</div>
+    </div>
+    <div class="tab-item" data-tab="browse">
+      <div class="tab-icon">🎞️</div>
+      <div class="tab-label">Browse</div>
+    </div>
+    <div class="tab-item" data-tab="add">
+      <div class="tab-add-icon">＋</div>
+      <div class="tab-label" style="color:var(--text-dim)">Add</div>
+    </div>
+    <div class="tab-item" data-tab="search">
+      <div class="tab-icon">🔍</div>
+      <div class="tab-label">Search</div>
+    </div>
+    <div class="tab-item" data-tab="settings">
+      <div class="tab-icon">⚙️</div>
+      <div class="tab-label">Settings</div>
+    </div>
+  </nav>
+</div>
+<script>
+const WatchList = {};
+</script>
+</body>
+</html>

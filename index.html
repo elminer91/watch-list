@@ -552,7 +552,7 @@ WatchList.Items = {
       status: 'want',       // always default — user sets this
       rating: null,         // user sets when watched
       priority: 'normal',   // user sets
-      currentSeason: data.currentSeason || null,
+      currentSeason: data.type === 'tv' ? (data.currentSeason || 1) : null,
     };
     items.unshift(item);    // newest first
     WatchList.Storage.setItems(items);
@@ -582,8 +582,8 @@ WatchList.Items = {
     if (filters.type)     items = items.filter(i => i.type === filters.type);
     if (filters.status)   items = items.filter(i => i.status === filters.status);
     if (filters.priority) items = items.filter(i => i.priority === filters.priority);
-    if (filters.service)  items = items.filter(i => i.streamingServices.includes(filters.service));
-    if (filters.mood)     items = items.filter(i => i.moodTags.includes(filters.mood));
+    if (filters.service)  items = items.filter(i => Array.isArray(i.streamingServices) && i.streamingServices.includes(filters.service));
+    if (filters.mood)     items = items.filter(i => Array.isArray(i.moodTags) && i.moodTags.includes(filters.mood));
     if (filters.binge)    items = items.filter(i => i.bingeStatus === 'binge_ready');
     if (filters.query) {
       const q = filters.query.toLowerCase();
@@ -599,30 +599,22 @@ WatchList.Items = {
 
   getAllMoods() {
     const all = WatchList.Storage.getItems().flatMap(i => i.moodTags);
-    return [...new Set(all)];
+    return [...new Set(all)].sort();
   },
 
-  getWatchTonightPicks(typeFilter) {
+  getWatchTonightPicks(typeFilter = 'both') {
     // typeFilter: 'both' | 'movie' | 'tv'
     const pool = WatchList.Storage.getItems().filter(i => i.status === 'want');
-    const score = (item) => {
-      let s = Math.random();
-      if (item.priority === 'high') s += 2;
-      if (item.bingeStatus === 'binge_ready') s += 1;
-      return s;
-    };
+    const scored = (arr) => arr
+      .map(item => ({ item, s: Math.random() + (item.priority === 'high' ? 2 : 0) + (item.bingeStatus === 'binge_ready' ? 1 : 0) }))
+      .sort((a, b) => b.s - a.s)
+      .map(x => x.item);
 
-    if (typeFilter === 'movie') {
-      const movies = pool.filter(i => i.type === 'movie').sort((a, b) => score(b) - score(a));
-      return movies.slice(0, 2);
-    }
-    if (typeFilter === 'tv') {
-      const shows = pool.filter(i => i.type === 'tv').sort((a, b) => score(b) - score(a));
-      return shows.slice(0, 2);
-    }
+    if (typeFilter === 'movie') return scored(pool.filter(i => i.type === 'movie')).slice(0, 2);
+    if (typeFilter === 'tv')    return scored(pool.filter(i => i.type === 'tv')).slice(0, 2);
     // 'both'
-    const movies = pool.filter(i => i.type === 'movie').sort((a, b) => score(b) - score(a));
-    const shows  = pool.filter(i => i.type === 'tv').sort((a, b) => score(b) - score(a));
+    const movies = scored(pool.filter(i => i.type === 'movie'));
+    const shows  = scored(pool.filter(i => i.type === 'tv'));
     return [movies[0], shows[0]].filter(Boolean);
   }
 };

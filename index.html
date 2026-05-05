@@ -646,7 +646,7 @@ Schema:
   "title": "exact official title",
   "type": "movie" or "tv",
   "genre": ["Genre1", "Genre2"],
-  "posterUrl": "direct URL to a JPEG or PNG poster image",
+  "posterUrl": "TMDB poster URL in format https://image.tmdb.org/t/p/w500/{poster_path} — search TMDB to find the exact poster_path for this title",
   "runtime": runtime in minutes for movies (integer or null),
   "episodeCount": total episodes for TV shows (integer or null),
   "avgEpisodeLength": average episode length in minutes for TV shows (integer or null),
@@ -660,7 +660,7 @@ Schema:
 }
 
 Rules:
-- posterUrl must be a working direct image URL (not a webpage URL)
+- posterUrl: search TMDB for the title and return the exact URL in format https://image.tmdb.org/t/p/w500/{poster_path} — this is the preferred source as it allows direct embedding. Only fall back to null if you cannot find the TMDB poster_path with confidence
 - streamingServices: only active current US streaming availability
 - bingeStatus for TV shows: "binge_ready" means the full current season is out; "airing" means mid-season right now; "between_seasons" means no active season
 - Return null for any field you cannot determine with confidence

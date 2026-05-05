@@ -690,7 +690,7 @@ Return ONLY the JSON object, nothing else.`;
       signal: AbortSignal.timeout(30000),
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        tools: [{ google_search_retrieval: {} }],
+        tools: [{ google_search: {} }],
       })
     });
     if (!res.ok) {
